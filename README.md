@@ -1,2 +1,2 @@
-# gists
-GTAmodding gists
+# Gists
+GTAmodding gists.
