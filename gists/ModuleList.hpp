@@ -8,10 +8,24 @@
 class ModuleList
 {
 public:
+	struct LazyEnumerateTag {};
+
+	ModuleList()
+	{
+		Enumerate();
+	}
+
+	explicit ModuleList( LazyEnumerateTag )
+	{
+	}
+
 	// Initializes module list
 	// Needs to be called before any calls to Get or GetAll
 	void Enumerate()
 	{
+		// Cannot enumerate twice without cleaing
+		assert( m_moduleList.size() == 0 );
+
 		constexpr size_t INITIAL_SIZE = sizeof(HMODULE) * 256;
 		HMODULE* modules = static_cast<HMODULE*>(malloc( INITIAL_SIZE ));
 		if ( modules != nullptr )
@@ -107,6 +121,38 @@ public:
 		for ( auto& e : m_moduleList )
 		{
 			if ( _wcsicmp( moduleName, e.second.c_str() ) == 0 )
+			{
+				results.push_back( e.first );
+			}
+		}
+
+		return results;
+	}
+
+	// Gets handle of a loaded module with given prefix, NULL otherwise
+	HMODULE GetByPrefix( const wchar_t* modulePrefix ) const
+	{
+		// If vector is empty then we're trying to call it without calling Enumerate first
+		assert( m_moduleList.size() != 0 );
+
+		const size_t len = wcslen( modulePrefix );
+		auto it = std::find_if( m_moduleList.begin(), m_moduleList.end(), [&]( const auto& e ) {
+			return _wcsnicmp( modulePrefix, e.second.c_str(), len ) == 0;
+		} );
+		return it != m_moduleList.end() ? it->first : nullptr;
+	}
+
+	// Gets handles to all loaded modules with given prefix
+	std::vector<HMODULE> GetAllByPrefix( const wchar_t* modulePrefix ) const
+	{
+		// If vector is empty then we're trying to call it without calling Enumerate first
+		assert( m_moduleList.size() != 0 );
+
+		const size_t len = wcslen( modulePrefix );
+		std::vector<HMODULE> results;
+		for ( auto& e : m_moduleList )
+		{
+			if ( _wcsnicmp( modulePrefix, e.second.c_str(), len ) == 0 )
 			{
 				results.push_back( e.first );
 			}
